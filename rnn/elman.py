@@ -1,3 +1,4 @@
+import lasagne
 import numpy
 import os
 import theano
@@ -21,7 +22,7 @@ def cdist(matrix, vector):
 
 class model(object):
     
-    def __init__(self, nh, nc, ne, de, cs, memory_size=100, n_memory_slots=1):
+    def __init__(self, nh, nc, ne, de, cs, memory_size=40, n_memory_slots=8):
         '''
         nh :: dimension of the hidden layer
         nc :: number of classes
@@ -42,13 +43,13 @@ class model(object):
         self.w0  = theano.shared(0.2 * numpy.random.uniform(-1.0, 1.0, (n_memory_slots,)).astype(theano.config.floatX))
 
         self.Wk  = theano.shared(0.2 * numpy.random.uniform(-1.0, 1.0, (memory_size, nh)).astype(theano.config.floatX))
-        self.Wg  = theano.shared(0.2 * numpy.random.uniform(-1.0, 1.0, (1, de*cs)).astype(theano.config.floatX))
+        self.Wg  = theano.shared(0.2 * numpy.random.uniform(-1.0, 1.0, (n_memory_slots, de*cs)).astype(theano.config.floatX))
         self.Wb  = theano.shared(0.2 * numpy.random.uniform(-1.0, 1.0, (1, nh)).astype(theano.config.floatX))
         self.Wv  = theano.shared(0.2 * numpy.random.uniform(-1.0, 1.0, (memory_size, nh)).astype(theano.config.floatX))
         self.We  = theano.shared(0.2 * numpy.random.uniform(-1.0, 1.0, (n_memory_slots, nh)).astype(theano.config.floatX))
 
         self.bk  = theano.shared(numpy.zeros(memory_size, dtype=theano.config.floatX))
-        self.bg  = theano.shared(numpy.zeros(1, dtype=theano.config.floatX))
+        self.bg  = theano.shared(numpy.zeros(n_memory_slots, dtype=theano.config.floatX))
         self.bb  = theano.shared(numpy.zeros(1, dtype=theano.config.floatX))
         self.bv  = theano.shared(numpy.zeros(memory_size, dtype=theano.config.floatX))
         self.be  = theano.shared(numpy.zeros(n_memory_slots, dtype=theano.config.floatX))
@@ -70,6 +71,7 @@ class model(object):
             # eqn 13
             beta_pre = T.dot(self.Wb, h_tm1) + self.bb
             beta = T.log(1 + T.exp(beta_pre))
+            beta = T.addbroadcast(beta, 0)
 
             # eqn 12
             w_hat = cdist(M_previous, k)
@@ -112,8 +114,7 @@ class model(object):
         # cost and gradients and learning rate
         lr = T.scalar('lr')
         nll = -T.mean(T.log(p_y_given_x_lastword)[y])
-        gradients = T.grad( nll, self.params )
-        updates = OrderedDict(( p, p-lr*g ) for p, g in zip( self.params , gradients))
+        updates = lasagne.updates.adadelta(nll, self.params)
         
         # theano functions
         self.classify = theano.function(inputs=[idxs], outputs=y_pred)
