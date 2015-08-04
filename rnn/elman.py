@@ -49,26 +49,26 @@ class model(object):
 
         self.bk  = theano.shared(numpy.zeros(memory_size, dtype=theano.config.floatX))
         self.bg  = theano.shared(numpy.zeros(1, dtype=theano.config.floatX))
-        self.bb  = theano.shared(numpy.zeros(nh, dtype=theano.config.floatX))
+        self.bb  = theano.shared(numpy.zeros(1, dtype=theano.config.floatX))
         self.bv  = theano.shared(numpy.zeros(memory_size, dtype=theano.config.floatX))
         self.be  = theano.shared(numpy.zeros(n_memory_slots, dtype=theano.config.floatX))
 
         # bundle
-        self.params = [ self.emb, self.Wx, self.Wh, self.W, self.bh, self.b, self.h0, self.Wg, self.Wb, self.Wv, self.We, self.Wk ]
-        self.names  = [ 'embeddings', 'Wx', 'Wh', 'W', 'bh', 'b', 'h0', 'Wg', 'Wb', 'Wv', 'We', 'Wk']
+        self.params = [ self.emb, self.Wx, self.Wh, self.W, self.bh, self.b, self.h0, self.Wg, self.Wb, self.Wv, self.We, self.Wk, self.bk, self.bg, self.bb, self.bv, self.be ]
+        self.names  = [ 'embeddings', 'Wx', 'Wh', 'W', 'bh', 'b', 'h0', 'Wg', 'Wb', 'Wv', 'We', 'Wk', 'bk', 'bg', 'bb', 'bv', 'be' ]
         idxs        = T.imatrix() # as many columns as context window size/lines as words in the sentence
         x           = self.emb[idxs].reshape((idxs.shape[0], de*cs))
         y           = T.iscalar('y') # label
 
         def recurrence(x_t, h_tm1, w_previous, M_previous):
-            g_t = T.nnet.sigmoid(T.dot(self.Wg, x_t))# + self.bg)
+            g_t = T.nnet.sigmoid(T.dot(self.Wg, x_t) + self.bg)
 
             ### EXTERNAL MEMORY READ
             # eqn 11
-            k = T.dot(self.Wk, h_tm1)# + self.bk
+            k = T.dot(self.Wk, h_tm1) + self.bk
 
             # eqn 13
-            beta_pre = T.dot(self.Wb, h_tm1)# + self.bb
+            beta_pre = T.dot(self.Wb, h_tm1) + self.bb
             beta = T.log(1 + T.exp(beta_pre))
 
             # eqn 12
@@ -84,10 +84,10 @@ class model(object):
 
             ### EXTERNAL MEMORY UPDATE
             # eqn 16
-            v = T.dot(self.Wv, h_tm1)# + self.bv
+            v = T.dot(self.Wv, h_tm1) + self.bv
 
             # eqn 17
-            e = T.nnet.sigmoid(T.dot(self.We, h_tm1))# + self.be)
+            e = T.nnet.sigmoid(T.dot(self.We, h_tm1) + self.be)
             f = 1. - w_t * e
 
             # eqn 18
