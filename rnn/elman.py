@@ -30,25 +30,22 @@ class model(object):
         cs :: word window context size 
         '''
         # parameters of the model
-        self.emb = theano.shared(0.2 * numpy.random.uniform(-1.0, 1.0,\
-                   (ne+1, de)).astype(theano.config.floatX)) # add one for PADDING at the end
-        self.Wx  = theano.shared(0.2 * numpy.random.uniform(-1.0, 1.0,\
-                   (nh, de*cs)).astype(theano.config.floatX))
-        self.Wh  = theano.shared(0.2 * numpy.random.uniform(-1.0, 1.0,\
-                   (nh, memory_size)).astype(theano.config.floatX))
-        self.W   = theano.shared(0.2 * numpy.random.uniform(-1.0, 1.0,\
-                   (nc, nh)).astype(theano.config.floatX))
+        self.emb = theano.shared(0.2 * numpy.random.uniform(-1.0, 1.0, (ne+1, de)).astype(theano.config.floatX)) # add one for PADDING at the end
+        self.Wx  = theano.shared(0.2 * numpy.random.uniform(-1.0, 1.0, (nh, de*cs)).astype(theano.config.floatX))
+        self.Wh  = theano.shared(0.2 * numpy.random.uniform(-1.0, 1.0, (nh, memory_size)).astype(theano.config.floatX))
+        self.W   = theano.shared(0.2 * numpy.random.uniform(-1.0, 1.0, (nc, nh)).astype(theano.config.floatX))
         self.bh  = theano.shared(numpy.zeros(nh, dtype=theano.config.floatX))
         self.b   = theano.shared(numpy.zeros(nc, dtype=theano.config.floatX))
         self.h0  = theano.shared(0.2 * numpy.random.uniform(-1.0, 1.0, (nh,)).astype(theano.config.floatX))
 
-        self.M = theano.shared(0.2 * numpy.random.uniform(-1.0, 1.0, (memory_size, n_memory_slots)).astype(theano.config.floatX))
+        self.M   = theano.shared(0.2 * numpy.random.uniform(-1.0, 1.0, (memory_size, n_memory_slots)).astype(theano.config.floatX))
+        self.w0  = theano.shared(0.2 * numpy.random.uniform(-1.0, 1.0, (n_memory_slots,)).astype(theano.config.floatX))
+
         self.Wk  = theano.shared(0.2 * numpy.random.uniform(-1.0, 1.0, (memory_size, nh)).astype(theano.config.floatX))
-        self.Wg  = theano.shared(0.2 * numpy.random.uniform(-1.0, 1.0, (de*cs, 1)).astype(theano.config.floatX))
-        self.Wb  = theano.shared(0.2 * numpy.random.uniform(-1.0, 1.0, (nh, 1)).astype(theano.config.floatX))
+        self.Wg  = theano.shared(0.2 * numpy.random.uniform(-1.0, 1.0, (1, de*cs)).astype(theano.config.floatX))
+        self.Wb  = theano.shared(0.2 * numpy.random.uniform(-1.0, 1.0, (1, nh)).astype(theano.config.floatX))
         self.Wv  = theano.shared(0.2 * numpy.random.uniform(-1.0, 1.0, (memory_size, nh)).astype(theano.config.floatX))
         self.We  = theano.shared(0.2 * numpy.random.uniform(-1.0, 1.0, (n_memory_slots, nh)).astype(theano.config.floatX))
-        self.w0  = theano.shared(0.2 * numpy.random.uniform(-1.0, 1.0, (n_memory_slots,)).astype(theano.config.floatX))
 
         self.bk  = theano.shared(numpy.zeros(memory_size, dtype=theano.config.floatX))
         self.bg  = theano.shared(numpy.zeros(1, dtype=theano.config.floatX))
@@ -64,14 +61,14 @@ class model(object):
         y           = T.iscalar('y') # label
 
         def recurrence(x_t, h_tm1, w_previous, M_previous):
-            g_t = T.nnet.sigmoid(T.dot(x_t, self.Wg))# + self.bg)
+            g_t = T.nnet.sigmoid(T.dot(self.Wg, x_t))# + self.bg)
 
             ### EXTERNAL MEMORY READ
             # eqn 11
             k = T.dot(self.Wk, h_tm1)# + self.bk
 
             # eqn 13
-            beta_pre = T.dot(h_tm1, self.Wb)# + self.bb
+            beta_pre = T.dot(self.Wb, h_tm1)# + self.bb
             beta = T.log(1 + T.exp(beta_pre))
 
             # eqn 12
